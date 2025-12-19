@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Fingerprint Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: #e5e7eb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .card {
+            background: #020617;
+            padding: 25px;
+            border-radius: 10px;
+            width: 350px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.6);
+        }
+        h2 {
+            text-align: center;
+        }
+        input, button {
+            width: 100%;
+            margin-top: 12px;
+        }
+        button {
+            padding: 10px;
+            background: #2563eb;
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+        .result {
+            margin-top: 15px;
+            background: #020617;
+            padding: 10px;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Fingerprint Detection</h2>
+
+    <input type="file" id="fileInput" accept="image/*">
+    <button onclick="uploadImage()">Predict</button>
+
+    <div class="result" id="result"></div>
+</div>
+
+<script>
+async function uploadImage() {
+    const fileInput = document.getElementById("fileInput");
+    const resultDiv = document.getElementById("result");
+
+    if (!fileInput.files.length) {
+        resultDiv.innerHTML = "⚠ Please select an image";
+        return;
+    }
+    const validTypes = ['image/jpeg', 'image/png', 'image/bmp'];
+    if (!validTypes.includes(file.type)) {
+        resultDiv.innerHTML = "❌ Invalid format. Please upload a JPG, PNG, or BMP.";
+        return;
+    }
+    const maxSizeInBytes = 5 * 1024 * 1024; 
+    if (file.size > maxSizeInBytes) {
+        resultDiv.innerHTML = "❌ File too large. Maximum size is 5MB.";
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+
+    resultDiv.innerHTML = "⏳ Predicting...";
+
+    try {
+        const response = await fetch("http://127.0.0.1:8000/predict", {
+            method: "POST",
+            body: formData
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || "Server error");
+        }
+
+        // 1. Get the raw JSON
+        const data = await response.json();
+        
+        // DEBUG: Print the actual data to the Console
+        console.log("Backend Response:", data);
+
+        // 2. Access the internal 'prediction' key
+        // The backend returns: { "prediction": { ... } }
+        const pred = data.prediction; 
+
+       if (pred) {
+    // Helper function to safely extract label and format confidence
+    const getResult = (obj) => {
+        if (!obj || typeof obj !== 'object') return { label: 'N/A', conf: 'N/A' };
+        const label = obj.label || 'N/A';
+        const conf = obj.confidence ? (obj.confidence * 100).toFixed(1) + '%' : 'N/A';
+        return { label, conf };
+    };
+
+    const gender = getResult(pred.gender);
+    const type = getResult(pred.type);
+    const hand = getResult(pred.hand);
+    const finger = getResult(pred.finger);
+
+    resultDiv.innerHTML = `
+        <div style="text-align: left; line-height: 1.8;">
+            <p><b>Gender:</b> ${gender.label} <span style="color: #94a3b8; font-size: 0.85em;">(${gender.conf})</span></p>
+            <p><b>Type:</b> ${type.label} <span style="color: #94a3b8; font-size: 0.85em;">(${type.conf})</span></p>
+            <p><b>Hand:</b> ${hand.label} <span style="color: #94a3b8; font-size: 0.85em;">(${hand.conf})</span></p>
+            <p><b>Finger:</b> ${finger.label} <span style="color: #94a3b8; font-size: 0.85em;">(${finger.conf})</span></p>
+        </div>
+    `;
+}else {
+            resultDiv.innerHTML = "⚠ Backend returned data, but 'prediction' was empty.";
+        }
+
+    } catch (error) {
+        console.error("Error details:", error);
+        resultDiv.innerHTML = `❌ Error: ${error.message} processing request`;
+    }
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
+
+# ML artifacts (optional – adjust if needed)
+*.h5
+*.pt
+*.pth
+model/
+uploads/
+
+# OS
+.DS_Store
